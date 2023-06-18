@@ -1,138 +1,145 @@
-
-
 const score = document.getElementById("score")
 
-let speed = 0.2
-let temp = ""
+export const SNAKE_SPEED = 5
 
-let snakeBody = []
+let newSegments = 0
 
-export default class Snake {
-    constructor(snakeElem) {
-       
-        this.snakeElem = snakeElem
-    }
+let food = getRandomNumberBetween()
 
-    get DIRECTION() {
-        return getComputedStyle(this.snakeElem).getPropertyValue("--DIRECTION")
-    }
+let inputDirection = {x: 0, y:0}
+let lastInputDirection = {x: 0, y:0}
 
-    set DIRECTION(value) {
-        this.snakeElem.style.setProperty("--DIRECTION", value)
-    }
+const snakeBody = [{x: 11, y: 11}]
 
-   
-
-    create(snake) {
-        let newDiv = this.snakeElem
-        
-
-        console.log(newDiv)
-
-       
-    
-    }
-
-
-    get x() {
-        return parseFloat(getComputedStyle(this.snakeElem).getPropertyValue("--x"))
-    }
-
-    set x(value) {
-        this.snakeElem.style.setProperty("--x", value)
-    }
-
-    get y() {
-        return parseFloat(getComputedStyle(this.snakeElem).getPropertyValue("--y"))
-    }
-
-    set y(value) {
-        this.snakeElem.style.setProperty("--y", value)
-    }
-
-    rect() {
-        return this.snakeElem.getBoundingClientRect()
-    }
-    
-    listen() {
-        document.addEventListener("keyup",  key => {
-            if (key.keyCode === 87 && this.DIRECTION !== "DOWN" && this.DIRECTION !== "UP"  ) this.DIRECTION = "UP"
-            if (key.keyCode === 83 && this.DIRECTION !== "UP"  && this.DIRECTION !== "DOWN") this.DIRECTION = "DOWN"
-            if (key.keyCode === 65 && this.DIRECTION !== "RIGHT" && this.DIRECTION !== "LEFT") this.DIRECTION = "LEFT"
-            if (key.keyCode === 68 && this.DIRECTION !== "LEFT" && this.DIRECTION !== "RIGHT") this.DIRECTION = "RIGHT"
-        })
-
-        
-    }
-
-    reset (apple) {
-        this.x = 50
-        this.y = 50
-        this.DIRECTION = "IDLE"
-        score.textContent = 0
-        apple.spawn()
-    }
-
-    spawn() {
-        this.x = getRandomNumberBetween(10, 20)
-        this.y = getRandomNumberBetween(10, 20)
-    }
-
-    update (apple) {
-        this.listen()
-        let rect = this.rect()
-        let appleRect = apple.rect()
-        if (this.DIRECTION === "UP") {
-            this.y -= speed
-        }
-
-        if (this.DIRECTION === "LEFT" ) {
-            this.x -= speed
-
-        }
-
-        if (this.DIRECTION === "RIGHT") {
-            this.x += speed
-
-
-
-        }
-
-        if (this.DIRECTION === "DOWN") {
-            this.y += speed
-
-
-        }
-
-        if (rect.bottom >= window.innerHeight || rect.top <= 0) {
-            this.reset(apple)
-        }
-
-        if (rect.right >= window.innerWidth || rect.left <= 0) {
-            this.reset(apple)
-        }
-
-        if (isCollision(rect, appleRect)) {
-            apple.spawn()
-            score.textContent = parseInt(score.textContent) + 1
-            this.create(this)
-        }
-
-
-    }
-
-
+export function drawSnake(gameBoard) {
+    snakeBody.forEach(segment => {
+        const snakeElement = document.createElement('div')
+        snakeElement.style.gridRowStart = segment.y
+        snakeElement.style.gridColumnStart = segment.x
+        snakeElement.classList.add('snakes')
+        gameBoard.appendChild(snakeElement)
+    })
 }
 
-function isCollision(rect1, rect2) {
+function expandSnake(amount) {
+    newSegments += amount
+}
+
+function addSegements() {
+    for (let i = 0; i < newSegments; i++) {
+        snakeBody.push({...snakeBody[snakeBody.length - 1]})
+    }
+
+    newSegments = 0
+}
+
+function onSnake(position, {ignoreHead = false} = {}) {
+    return snakeBody.some((segment, index) => {
+        if (ignoreHead && index === 0) return false
+        return isCollision(segment, position)
+    })
+}
+
+export function getSnakeHead() {
+    return snakeBody[0]
+}
+
+export function outsideGrid(position) {
     return (
-        rect1.left <= rect2.right && 
-        rect1.right >= rect2.left && 
-        rect1.top <= rect2.bottom &&
-        rect1.bottom >= rect2.top
+        position.x < 1 || position.x > 21 ||
+        position.y < 1 || position.y > 21
     )
 }
 
-function getRandomNumberBetween(min, max) {
-    return Math.floor(Math.random() * (max - min) * min)
+export function snakeIntersection () {
+    return onSnake(snakeBody[0], {ignoreHead: true})
 }
+        
+
+
+window.addEventListener("keydown",  e => {
+    switch(e.key) {
+        case "w":
+            if (lastInputDirection.y !== 0) break
+            inputDirection = {x : 0, y: -1}
+            break
+        case "s":
+            if (lastInputDirection.y !== 0) break
+            inputDirection = {x: 0, y: 1}
+            break
+        case "a":
+            if (lastInputDirection.x !== 0) break
+            inputDirection = {x: -1, y: 0}
+            break
+        case "d":
+            if (lastInputDirection.x !== 0) break
+            inputDirection = {x: 1, y: 0}
+            break
+    }
+})
+
+
+
+function getInputDirection () {
+    lastInputDirection = inputDirection
+    return inputDirection
+}
+
+export function drawApple(gameBoard) {
+    const newApple = document.createElement('div')
+    newApple.style.gridRowStart =  food.y
+    newApple.style.gridColumnStart =  food.x
+    newApple.classList.add("apple")
+    gameBoard.appendChild(newApple)
+}
+
+export function updateSnake() {    
+    addSegements()
+    const inputDirection = getInputDirection()
+
+    for (let i = snakeBody.length - 2; i >= 0; i--) {
+        snakeBody[i + 1] = {...snakeBody[i]}
+    }
+
+    snakeBody[0].x += inputDirection.x
+    snakeBody[0].y += inputDirection.y
+
+}
+
+export function updateApple() {
+    if (onSnake(food)) {
+        food = getRandomNumberBetween()
+        score.textContent = parseInt(score.textContent) + 1
+        expandSnake(2)
+    }
+}
+
+function isCollision(pos1, pos2) {
+    return pos1.x === pos2.x && pos1.y === pos2.y
+}
+
+function getRandomNumberBetween() {
+    let newFoodPosition
+    while (newFoodPosition == null) {
+        newFoodPosition = randomGridPosition()
+    }
+    return newFoodPosition
+}
+
+function randomGridPosition() {
+    return {
+        x: Math.floor(Math.random() * 21) + 1,
+        y: Math.floor(Math.random() * 21) + 1
+    }
+}
+
+
+
+
+    
+
+
+
+
+
+    
